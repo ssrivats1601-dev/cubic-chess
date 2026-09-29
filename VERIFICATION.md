@@ -26,11 +26,29 @@ Prepared September 28, 2026; renamed to Cubic Chess on September 29, 2026. Verif
 - Long-poll updates, client fallback and reconnect behavior, stale response protection, server clock expiry and increment.
 - Finished results, opponent-approved rematches, swapped seats, unchanged settings, preserved previous result and a single child match on concurrent acceptance.
 
-## Limits of this verification
+## GitHub Actions verification
 
-- Native PostgreSQL could not start in this workspace. PGlite serializes database connections and therefore does not prove native PostgreSQL's behavior under transaction contention. The included GitHub Actions job runs the same suite against PostgreSQL 17 to cover that remaining check.
-- The Chromium download could not complete here. Desktop/touch browser suites are included in CI but have **not been run in this workspace**. DOM/UI tests passed; screenshots and real browser layout checks remain a CI gate.
-- The owner authorized publication to the public `ssrivats1601-dev/cubic-chess` repository on September 29, 2026. No Vercel deployment, Vercel account settings, real provider database or production smoke test was executed. Follow `docs/DEPLOYMENT.md` after deploying.
-- The source preserves the existing feature set; it does not import existing Sites database rows or origin-scoped browser identities.
+[Successful run — September 29, 2026](https://github.com/ssrivats1601-dev/cubic-chess/actions/runs/36586433419)
 
-Run `npm run check` against a disposable native PostgreSQL test database, then `npm run test:browser`, before promoting a real deployment. Keep the deployed website password-protected while doing so.
+Tested application commit: `4fbb0b6daf6386cc1bad1eb945e7d96bc2a947d6`. Later documentation-only commits do not change the tested runtime.
+
+| CI check | Result |
+| --- | --- |
+| Clean `npm ci` and production build checks | Passed |
+| Engine, theme, records/search, DOM UI and client tests | 27 passed |
+| HTTP/WebSocket/security/concurrency tests using native PostgreSQL 17 | 21 passed |
+| Chromium desktop and touch/mobile gameplay | Passed |
+| Responsive layouts at 320, 390, 768, 1024 and 1440 pixels | Passed |
+| Two independent browsers, WebSocket and long-poll fallback, stale-response rejection, socket renewal and network-loss recovery | Passed |
+| Listed/unlisted rooms, turns, draws and resignation | Passed |
+| Browser runtime errors | None detected |
+
+The tested move appeared in the second browser after 409 ms on this CI run. This is a measured test result, not a production latency guarantee. Browser screenshots are available in the run's `browser-results` artifact. The native PostgreSQL and Chromium checks that were unavailable locally are now completed in CI.
+
+## Remaining deployment checks
+
+- Source is published in the public `ssrivats1601-dev/cubic-chess` repository with the owner's approval. The website retains its password gate.
+- No Vercel deployment, Vercel account settings, hosted provider database or production smoke test was executed. Configure the three variables in README and follow `docs/DEPLOYMENT.md` after deploying.
+- Existing Sites database rows and origin-scoped browser identities are not imported.
+
+Future runtime changes should pass `npm run check` and `npm run test:browser` before promotion. Keep the deployed website password-protected.
