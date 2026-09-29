@@ -34,7 +34,7 @@ test('private gate protects every asset and API; login, logout, rotation and CSR
   assert.equal((await fetch(origin+'/server/http.js',{headers:{Cookie:mf.cookie}})).status,404);
 });
 test('missing secrets fail closed instead of exposing the website',async()=>{
-  const server=createServer({env:{}});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const server=createServer({env:{SITE_ACCESS:'private'}});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   try{assert.equal((await fetch('http://127.0.0.1:'+server.address().port+'/')).status,503);}finally{await server.shutdown();}
 });
 test('password throttling persists across separate instances',async()=>{
@@ -244,4 +244,19 @@ test('WebSocket upgrade cannot bypass the private cookie or same-origin check',a
     const status=await new Promise(resolve=>{const ws=new WebSocket(url,{headers});ws.on('unexpected-response',(_,r)=>{r.resume();resolve(r.statusCode);});ws.on('error',()=>resolve(503));});
     assert.equal(status,expected);
   }
+});
+
+test('public default opens assets and room API without cookies, retaining origin checks',async()=>{
+  const server=createServer({env:{SITE_PASSWORD:'old-password',SESSION_SECRET:'old-secret'},db:mf.db});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const origin='http://127.0.0.1:'+server.address().port;
+  try{
+    for(const path of ['/','/app.js','/api/health'])assert.equal((await fetch(origin+path)).status,200,path);
+    assert.equal((await fetch(origin+'/auth/login',{redirect:'manual'})).headers.get('location'),'/');
+    const data={name:'Public visitor',visibility:'private',color:'w'};
+    const headers={'Content-Type':'application/json','X-Player-Token':token(),Origin:origin};
+    assert.equal((await fetch(origin+'/api/rooms',{method:'POST',headers,body:JSON.stringify(data)})).status,201);
+    assert.equal((await fetch(origin+'/api/rooms',{method:'POST',headers:{...headers,Origin:'https://evil.test'},body:JSON.stringify(data)})).status,403);
+    assert.equal((await fetch(origin+'/.env')).status,404);
+  }finally{await server.shutdown();}
 });

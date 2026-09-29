@@ -1,3 +1,5 @@
+> Update: fixed Vercel empty-output rejection with generated robots.txt; public access is now the default. Earlier private-mode test results below describe the optional gate.
+
 # Verification record
 
 Prepared September 28, 2026; renamed to Cubic Chess on September 29, 2026. Verification uses Node.js 24.19.0.
@@ -6,7 +8,7 @@ Prepared September 28, 2026; renamed to Cubic Chess on September 29, 2026. Verif
 
 | Check | Result |
 | --- | --- |
-| Build/syntax, server entry import and empty public output | Passed |
+| Build/syntax, server entry import and restricted static output | Passed |
 | Official Vercel Node builder (`@vercel/node` 16.0.1) | Passed; Node 24 Lambda created with protected assets and schema included |
 | Engine, theme, records/search, DOM UI and browser client tests | 27 passed |
 | HTTP, password gate, WebSockets, multiplayer and PostgreSQL SQL integration | 21 passed with portable PostgreSQL |

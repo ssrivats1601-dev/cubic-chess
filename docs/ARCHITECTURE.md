@@ -1,3 +1,5 @@
+> Site access is public by default. The shared-password gate described below is opt-in with SITE_ACCESS=private. Room seat and origin protections remain active in both modes.
+
 # Architecture
 
 ## Sources of truth
@@ -24,7 +26,7 @@ The SQL adapter translates only internally authored `?` placeholders to numbered
 
 Sign-in attempts use an atomic database counter keyed by a keyed hash of the source IP. A Vercel deployment uses its platform-forwarded client IP; local development uses the socket address. Raw passwords, raw player tokens and database URLs are not logged.
 
-HTML, scripts and assets all go through the Node handler; the static output folder stays empty. API responses and assets are private/no-store. CSP, frame restrictions, noindex and same-origin checks accompany the gate. The app does not expose anonymous spectators or public game records.
+HTML, scripts and assets all go through the Node handler; the static output folder contains only a generated robots.txt. API responses and assets are private/no-store. CSP, frame restrictions, noindex and same-origin checks accompany the gate. The app does not expose anonymous spectators or public game records.
 
 This shared-password model has no account directory, per-person revocation, OAuth, invitation emails or cross-device seat recovery. It is not a replica of the original Sites identity system.
 

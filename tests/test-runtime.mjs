@@ -2,7 +2,7 @@ import { createServer } from '../server/http.js';
 import { database, databaseFromPool } from '../server/database.js';
 import { WebSocket } from 'ws';
 
-export const testEnv={SITE_PASSWORD:'test-only-password-123',SESSION_SECRET:'test-only-secret-'.repeat(4)};
+export const testEnv={SITE_ACCESS:'private',SITE_PASSWORD:'test-only-password-123',SESSION_SECRET:'test-only-secret-'.repeat(4)};
 export async function runtime(options={}) {
   const url=process.env.TEST_DATABASE_URL;
   const portable=process.env.CUBIC_CHESS_PORTABLE_TEST==='1';

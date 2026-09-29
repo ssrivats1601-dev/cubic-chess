@@ -1,8 +1,8 @@
-# Cubic Chess · private realtime 3D chess
+# Cubic Chess · realtime 3D chess
 
 A complete GitHub-ready application for **Vercel + PostgreSQL**, adapted from the existing 3D chess site. Includes frontend, chess engine, server, local SVG assets, database schema, pinned dependencies, automated tests, and deployment configuration.
 
-Source repository: [ssrivats1601-dev/cubic-chess](https://github.com/ssrivats1601-dev/cubic-chess). The source is public; each deployed website remains password-protected. The existing Sites deployment is separate.
+Source repository: [ssrivats1601-dev/cubic-chess](https://github.com/ssrivats1601-dev/cubic-chess). The source is public; the website opens without a shared password by default. The existing Sites deployment is separate.
 
 ## What is retained
 
@@ -54,7 +54,7 @@ Choose **Add New → Project → Import Git Repository**. Use these settings:
 | Node.js | 24.x |
 | Install command | `npm ci` |
 | Build command | `npm run build` |
-| Output directory | `public` (intentionally empty; keep it empty) |
+| Output directory | `public` (generated robots.txt only) |
 | Fluid compute | Enabled by `vercel.json` |
 
 Add these **server-side environment variables** before deployment:
@@ -62,8 +62,8 @@ Add these **server-side environment variables** before deployment:
 | Variable | Value |
 | --- | --- |
 | `DATABASE_URL` | Your pooled PostgreSQL URL, including its TLS options |
-| `SITE_PASSWORD` | A unique password of at least 12 characters |
-| `SESSION_SECRET` | A random secret of at least 32 characters |
+| `SITE_PASSWORD` | Optional: only used with `SITE_ACCESS=private` |
+| `SESSION_SECRET` | Optional: only used with `SITE_ACCESS=private` |
 
 Generate a secret locally with `openssl rand -hex 32`, or run `npm run setup` and read the generated `.env`. Do not use `NEXT_PUBLIC_`, `VITE_`, or any other client-exposed prefix for these values.
 
@@ -71,9 +71,9 @@ Use separate databases/secrets for Production and Preview if you enable preview 
 
 ### 4. Deploy and verify access
 
-The app serves a password form first. Without valid password/secret configuration it fails closed with HTTP 503. Every application asset, API and WebSocket is protected. Keep Vercel's own deployment protection enabled where available as another layer.
+The app opens directly, without a site password. Only DATABASE_URL is required for online play. Old SITE_PASSWORD and SESSION_SECRET values do not enable the gate. Optional private hosting requires SITE_ACCESS=private, a 12-character password and a 32-character session secret.
 
-After deployment, use the [production smoke test](docs/DEPLOYMENT.md#production-smoke-test). Allow access only by sharing the password with intended players. Listed rooms are visible to signed-in site visitors; unlisted rooms require the code.
+After deployment, use the [production smoke test](docs/DEPLOYMENT.md#production-smoke-test). Listed rooms are visible to visitors; unlisted rooms require the code. Player seat tokens still protect moves.
 
 Vercel currently documents native WebSockets in Functions as beta, with Fluid compute required. Connections have a maximum lifetime. Cubic Chess renews its sockets after 45 seconds and reloads state from PostgreSQL. If upgrades are unavailable, automatic long-poll updates preserve multiplayer. Provider limits and actual latency still apply.
 
@@ -89,7 +89,7 @@ npm run db:migrate
 npm start
 ```
 
-Open **http://127.0.0.1:3000** and enter `SITE_PASSWORD` from your generated `.env`. The local server and database bind to loopback. Two separate browser profiles give you two player identities.
+Open **http://127.0.0.1:3000** to play directly. The local server and database bind to loopback. Two separate browser profiles give you two player identities.
 
 If Docker is unavailable, point `DATABASE_URL` in `.env` at your PostgreSQL server. The app itself has no Cloudflare, Sites, OpenAI API, CDN asset or paid font dependency. npm downloads the exact dependencies in `package-lock.json`; dependencies are not vendored into the repository.
 

@@ -5,6 +5,8 @@ const hash=v=>createHash('sha256').update(v).digest();
 const same=(a,b)=>timingSafeEqual(hash(a),hash(b));
 const sign=(data,key)=>createHmac('sha256',key).update(data).digest('base64url');
 export function accessControl(env={}) {
+  // Public access is the default, even if old deployment secrets still exist.
+  if(env.SITE_ACCESS!=='private')return {public:true,configured:true,authorized:()=>true};
   const password=env.SITE_PASSWORD||'',secret=env.SESSION_SECRET||'';
   const configured=password.length>=12&&secret.length>=32;
   // Rotating either secret or password invalidates previously issued cookies.

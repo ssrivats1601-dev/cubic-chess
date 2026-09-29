@@ -47,6 +47,7 @@ export function createServer({env=process.env,db:providedDb,socketLifetime=45000
       const url=requestUrl(req),path=url.pathname;
       if(!auth.configured)return send(503,'<!doctype html><title>Cubic Chess setup</title><h1>Private site setup required</h1><p>The owner must configure SITE_PASSWORD and SESSION_SECRET.</p>');
       if(req.method!=='GET'&&req.method!=='HEAD')checkOrigin(req,url);
+      if(auth.public&&(path==='/auth/login'||path==='/auth/logout'))return send(303,'','text/html',{'Location':'/'});
       if(path==='/auth/login'){
         if(req.method==='GET')return send(200,loginPage());
         if(req.method!=='POST')return json(405,{error:'Use the sign-in form.'});

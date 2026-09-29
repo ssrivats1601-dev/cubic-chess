@@ -1,10 +1,12 @@
+> Current default: public website; only DATABASE_URL is required. Password/session instructions below apply only when SITE_ACCESS=private.
+
 # Deployment and operations
 
 ## Required configuration
 
-`vercel.json` selects the plain Node function, Fluid compute, a 60-second request limit, protected asset inclusion, and a catch-all rewrite to `api/server.js`. All app files are read by that function after authorization. `public/` must remain empty: Vercel's static file handling could otherwise bypass the password gate. The build rejects nonempty `public/`.
+`vercel.json` selects the plain Node function, Fluid compute, a 60-second request limit, protected asset inclusion, and a catch-all rewrite to `api/server.js`. All app files are read by that function after authorization. `public/` contains only a generated robots.txt, satisfying Vercel’s nonempty output requirement. The build rejects all other static files.
 
-The function does not listen on its own port. Vercel owns the HTTP listener. `scripts/dev.mjs` starts the same server locally. `DATABASE_URL`, `SITE_PASSWORD` and `SESSION_SECRET` are read only on the server. Missing authentication configuration always closes access.
+The function does not listen on its own port. Vercel owns the HTTP listener. `scripts/dev.mjs` starts the same server locally. `DATABASE_URL`, `SITE_PASSWORD` and `SESSION_SECRET` are read only on the server. Public access is the default. Set SITE_ACCESS=private explicitly to enable the optional password gate; missing secrets then close access.
 
 Use a pooled PostgreSQL URL and choose a nearby database region in your Vercel project settings. Each warm instance permits up to five database connections, released after use. Vercel's `attachDatabasePool` handles idle connections on instance suspension. Preserve provider TLS options; do not disable certificate validation.
 
