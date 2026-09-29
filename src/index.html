@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#153e32">
+  <meta name="description" content="Cubic Chess: an eight-layer chess game. Explore the cube, plan your move, and play together.">
+  <title>Cubic Chess — Chess in another dimension</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Cubic Chess home"><svg viewBox="0 0 40 44" aria-hidden="true"><path d="M20 2 37 12v20L20 42 3 32V12Z M3 12l17 10 17-10M20 22v20M11.5 7 29 17v20M29 7 11.5 17v20M3 22l17 10 17-10"/></svg><span>Cubic Chess<span class="brand-dot">.</span></span></a>
+    <div class="header-right"><form method="post" action="/auth/logout"><button class="text-button" type="submit">Sign out</button></form><button class="text-button" id="lobby-nav">Lobby</button><span class="local-label" id="mode-label"><i></i> ONLINE CHESS</span><button class="text-button" id="rules-button">How to play <span aria-hidden="true">↗</span></button></div>
+  </header>
+  <main>
+<nav class="main-nav" aria-label="Main navigation"><a href="#/lobby" data-page-link="lobby">Lobby</a><a href="#/rooms" data-page-link="rooms">Open rooms</a><a href="#/setup" data-page-link="setup">New game</a><a href="#/matches" data-page-link="matches">My matches</a><a href="#/rules" data-page-link="rules">How to play</a><a href="#/variants" data-page-link="variants">Variants & clocks</a><a href="#/appearance" data-page-link="appearance">Appearance</a><a href="#local" id="resume-match">Return to game</a></nav>
+<section id="feature-view" class="feature-page" hidden aria-labelledby="feature-title"><div class="page-heading"><div class="eyebrow">CUBIC CHESS</div><h1 id="feature-title" tabindex="-1"></h1><p id="feature-description"></p></div><div id="feature-content"></div></section>
+    <div id="lobby-view">
+      <div class="lobby-toolbar"><div><span class="eyebrow">FIND YOUR NEXT MATCH</span><h2>The lobby<span class="brand-dot">.</span></h2></div><span class="connection-pill" id="lobby-connection"><i></i> Connecting…</span></div>
+      <div class="page-actions" id="lobby-actions"><a class="primary-button" href="#/setup">+ New game</a><a class="secondary-button" href="#/rooms">Find an open room</a><a class="secondary-button" href="#/matches">My matches</a></div><div class="lobby-error" id="lobby-feedback" role="status" aria-live="polite" hidden></div>
+      <div id="player-profile"><label class="field-label" for="player-name">YOUR PLAYER NAME</label><input id="player-name" class="text-input" maxlength="24" placeholder="What should we call you?" autocomplete="nickname" value="Player"></div><section class="lobby-grid" aria-label="Create or join a room">
+        <div class="lobby-card create-card"><div class="card-title"><span class="card-symbol">+</span><div><h3>Make the first move.</h3><p>Create a room and take your seat.</p></div></div>
+
+          <form id="create-room-form"><fieldset><legend>ROOM VISIBILITY</legend><div class="visibility-choices"><label class="choice-card"><input type="radio" name="visibility" value="public" checked><span><strong>◎ Public room</strong><small>Listed in the lobby</small></span></label><label class="choice-card"><input type="radio" name="visibility" value="private"><span><strong>Private room</strong><small>Join with a room code</small></span></label></div></fieldset><div class="choose-side"><span class="field-label">YOUR SIDE</span><div><label><input type="radio" name="color" value="w" checked> <i class="side-circle white"></i> White</label><label><input type="radio" name="color" value="b"> <i class="side-circle black"></i> Black</label></div></div><div id="lobby-setup"></div><button class="primary-button create-button" id="create-room" type="submit">Create room <span>↗</span></button><button class="secondary-button" id="new-local-setup" type="button" style="width:100%;margin-top:10px">Start local with this setup</button></form>
+        </div>
+        <div class="join-column"><div class="lobby-card join-card"><div class="card-title"><span class="card-symbol">↳</span><div><h3>Got an invitation?</h3><p>A room code is your way in.</p></div></div><form id="join-room-form"><label class="field-label" for="room-code-input">ROOM CODE</label><div class="join-input-group"><input id="room-code-input" class="text-input code-input" maxlength="14" placeholder="ABCDE-FG234" autocapitalize="characters" autocomplete="off" spellcheck="false" required><button class="primary-button" id="join-room" type="submit">Join <span>→</span></button></div></form><p class="access-note">Rooms are for people with access to this site. A private room stays out of the lobby.</p></div><button class="local-play-card" id="local-play"><span class="local-icon">⇄</span><span><strong>Resume local game</strong><small>Continue the match saved in this browser.</small></span><span class="arrow">↗</span></button></div>
+      </section>
+      <div id="room-search" hidden><label>Search open rooms<input id="room-query" class="text-input" type="search" placeholder="Host name, room code, or dimensions" maxlength="80"></label><label>Clock<select id="room-clock"><option value="all">Any clock</option><option value="timed">Timed</option><option value="untimed">Untimed</option></select></label><button class="secondary-button" id="clear-room-search">Clear filters</button><p id="room-search-count" role="status"></p></div><section class="room-directory" aria-label="Available rooms"><div class="directory-heading"><div class="directory-tabs" role="tablist" aria-label="Room list"><button role="tab" aria-selected="true" id="public-tab">Open rooms <span id="room-total">0</span></button><button role="tab" aria-selected="false" id="mine-tab">Your matches <span id="my-room-total">0</span></button></div><button class="text-button" id="refresh-lobby">↻ Refresh</button></div><div id="room-list" role="tabpanel" aria-live="polite"><div class="room-empty">Connecting to the lobby…</div></div></section>
+      <section id="local-results" class="local-results" hidden aria-label="Local results"></section><p class="lobby-footnote">Public rooms are listed for site visitors. Private rooms are unlisted. Waiting rooms expire after 30 minutes.</p>
+    </div>
+    <div id="game-view" hidden>
+    <div class="game-breadcrumb"><button class="text-button" id="back-to-lobby">← Back to lobby</button><span id="game-kind">LOCAL MATCH</span></div>
+    <section class="intro" aria-labelledby="page-title">
+      <div><div class="eyebrow">THE CLASSIC GAME. A WHOLE NEW ANGLE.</div><h1 id="page-title">Think beyond the board.</h1><p>Eight layers. Endless possibilities. Your move.</p></div>
+      <div class="dimension-mark" aria-label="8 by 8 by 8"><span>8 <b>×</b> 8 <b>×</b> 8</span><small>ONE CONNECTED CUBE</small></div>
+    </section>
+    <section id="match-result" class="match-result" hidden aria-labelledby="result-heading"></section><section class="arena" aria-label="Cubic Chess game">
+      <aside class="layer-panel" aria-labelledby="layers-heading">
+        <div class="panel-heading"><h2 id="layers-heading">THE CUBE</h2><span>8 layers</span></div>
+        <div class="layers" id="layers" role="group" aria-label="Choose a layer"></div>
+        <div class="layer-explainer"><span class="tiny-cube" aria-hidden="true">◇</span><p>One board, eight floors.<br>Pieces can travel between them.</p></div>
+      </aside>
+      <div class="board-panel">
+        <div class="board-heading"><div><div class="eyebrow" id="layer-eyebrow">THE STARTING FLOOR</div><h2 id="layer-title">Layer 1 <span>/ 8</span></h2></div><div class="board-tools"><button id="previous-layer" class="icon-button" aria-label="Previous layer" title="Previous layer [">↓</button><button id="next-layer" class="icon-button" aria-label="Next layer" title="Next layer ]">↑</button><button id="flip" class="icon-button flip-button" aria-label="Flip board" title="Flip board">⇄</button></div></div>
+        <div class="mobile-status"><strong id="mobile-turn">White to move</strong><span id="mobile-feedback">Select a white piece to begin.</span></div>
+        <div id="clocks" class="clocks" aria-label="Chess clocks"></div><div class="player-label" id="top-player"></div>
+        <div class="board-wrap"><div id="rank-labels" class="rank-labels" aria-hidden="true"></div><div id="board" class="board" role="grid" aria-label="Layer 1 chessboard"></div><div id="file-labels" class="file-labels" aria-hidden="true"></div></div>
+        <div class="player-label bottom-player" id="bottom-player"></div>
+        <div class="board-legend"><span><i class="legend-dot"></i> Legal move</span><span><i class="legend-capture"></i> Capture</span><span><i class="legend-last"></i> Last move</span><button class="text-button" id="clear-selection" hidden>Clear selection</button></div>
+        <div class="board-tip" id="board-tip"><span aria-hidden="true">↗</span><p><strong>Take the high ground.</strong> Select a knight on layer 1, then explore its highlighted layers.</p><button id="dismiss-tip" aria-label="Dismiss tip">×</button></div>
+      </div>
+      <aside class="match-panel" aria-label="Match information">
+        <div class="match-heading"><h2>THE MATCH</h2><span id="move-count">MOVE 01</span></div>
+        <div class="turn-status" id="turn-status"></div>
+        <div class="feedback" id="feedback" role="status" aria-live="polite" aria-atomic="true">Select a white piece to begin.</div>
+        <div class="selection-card" id="selection-card"></div>
+        <div id="online-match" hidden></div><div class="capture-section"><div class="section-label"><h3>OFF THE BOARD</h3><span id="capture-total">0 captured</span></div><div id="captured-pieces" class="captured-pieces"></div><p class="small-note">Every capture counts. Removed pieces stay out.</p></div><div id="draw-offer" hidden></div>
+        <div class="history-section"><div class="section-label"><h3>MOVE HISTORY</h3><span id="history-total">0 plies</span></div><div class="history" id="history" tabindex="0" aria-label="Move history"></div></div>
+        <div class="game-actions"><button id="new-game" class="primary-button"><span aria-hidden="true">+</span> New game</button><button id="undo" class="secondary-button" disabled>↶ Undo</button></div>
+        <div class="match-secondary"><button id="draw" class="text-button">Agree a draw</button><span>·</span><button id="resign" class="text-button">Resign</button></div>
+        <div id="save-status" class="save-status"><span aria-hidden="true">✓</span> Saved on this browser</div>
+      </aside>
+    </section>
+    </div>
+    <footer class="site-footer"><span>64 squares per layer. 512 ways to see the game.</span><button class="text-button" id="coordinates-button">Coordinates: <strong>layer · file · rank</strong> <code>1e1</code></button></footer>
+  </main>
+  <dialog id="modal" aria-labelledby="modal-title"><div class="modal-heading"><span class="eyebrow">CUBIC CHESS FIELD GUIDE</span><button id="close-modal" class="icon-button" aria-label="Close dialog">×</button></div><div id="modal-content"></div></dialog>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

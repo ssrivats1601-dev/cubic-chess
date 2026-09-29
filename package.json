@@ -1,0 +1,34 @@
+{
+  "name": "cubic-chess",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Private realtime three-dimensional chess, with Vercel and PostgreSQL hosting",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env scripts/dev.mjs",
+    "start": "node --env-file-if-exists=.env scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
+    "db:cleanup": "node --env-file-if-exists=.env scripts/cleanup.mjs",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "node --test tests/engine.test.mjs tests/themes.test.mjs tests/match-end.test.mjs tests/ui.test.mjs tests/online.test.mjs",
+    "test:integration": "node --env-file-if-exists=.env --test tests/server.test.mjs",
+    "test:browser": "node --env-file-if-exists=.env tests/browser.test.mjs && node --env-file-if-exists=.env tests/online-browser.test.mjs",
+    "check": "npm run build && npm test",
+    "test:portable": "npm run test:unit && node scripts/test-portable.mjs",
+    "setup": "node scripts/setup.mjs"
+  },
+  "dependencies": {
+    "@vercel/functions": "3.9.9",
+    "pg": "8.23.0",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@playwright/test": "1.63.0",
+    "happy-dom": "20.14.5"
+  }
+}

@@ -1,0 +1,74 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> cubic-chess@3.0.0 test:portable
+> npm run test:unit && node scripts/test-portable.mjs
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> cubic-chess@3.0.0 test:unit
+> node --test tests/engine.test.mjs tests/themes.test.mjs tests/match-end.test.mjs tests/ui.test.mjs tests/online.test.mjs
+
+✔ coordinates roundtrip every square and initial setup has exactly 32 pieces on layer 1 (3.348975ms)
+✔ rook travels along every axis and cannot pass through a blocker (9.482489ms)
+✔ bishops use the three sets of face diagonals, never space diagonals (5.490246ms)
+✔ knight has 24 interior jumps with all axis permutations (3.933847ms)
+✔ king can step into all 26 neighbors and cannot approach an enemy king (1.63227ms)
+✔ queen is rook plus bishop, excluding a three-axis diagonal (3.945785ms)
+✔ turns are enforced and captured pieces leave the board permanently (1.540945ms)
+✔ a pin from another layer cannot be exposed, and check requires a response (1.53124ms)
+✔ king is never captured and attacked destinations are illegal (4.84298ms)
+✔ both castling directions move the rook and king on layer 1 (1.42897ms)
+✔ castling rejects blockers, moved rooks, check and attacks on transit/destination from another layer (1.242444ms)
+✔ pawns move within their layer, double only at home, capture forward diagonally and stop at blockers (0.280765ms)
+✔ en passant captures the correct pawn, expires after one turn and cannot expose check (1.735643ms)
+✔ promotion allows all four choices and captured promoted pieces stay removed (4.006144ms)
+✔ drop requests are explicitly rejected and no reserves exist (0.191933ms)
+✔ checkmate and stalemate are found across all three dimensions (3.526116ms)
+✔ threefold repetition uses side, castling rights and effective en passant (2.79749ms)
+✔ king-only draw and readable game status (0.659804ms)
+✔ all preset and custom dimensions constrain every legal destination (3.648867ms)
+✔ custom settings reject malformed values and clocks expire deterministically (1.600012ms)
+✔ match records include board, clock, names, score and reason for every ending (2.007484ms)
+✔ room discovery supports normalized names, codes, dimensions and clock filters (0.286332ms)
+✔ browser client keeps newer revisions, stores seat identity and releases failed actions (12.38215ms)
+✔ browser socket reconnect reloads current state and fallback keeps updating (658.23952ms)
+✔ every theme has readable text, buttons and warnings (2.207679ms)
+✔ component styling uses theme variables instead of fixed color overrides (5.478287ms)
+✔ local UI setup, custom board, themes, clock, guide and restore (284.589367ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1006.661189
+✔ private gate protects every asset and API; login, logout, rotation and CSRF are enforced (1523.044407ms)
+✔ missing secrets fail closed instead of exposing the website (2.15405ms)
+✔ password throttling persists across separate instances (34.276284ms)
+✔ health, session validation and origin checks (8.761334ms)
+✔ public rooms are listed; private rooms and seat credentials stay hidden (25.98978ms)
+✔ join is exclusive, idempotent for a returning player and rejects a third seat (21.870839ms)
+✔ server enforces turns, legal moves and revisions; retrying a move does not duplicate it (45.091607ms)
+✔ simultaneous moves apply exactly once (22.723843ms)
+✔ draw requires the other player; resignation records the correct winner (35.762257ms)
+✔ cancel waiting room, reject invalid input, and enforce expiry (28.59066ms)
+✔ socket tickets enforce sessions, origins, target access, expiry, and one-time use (37.992589ms)
+✔ one lobby socket receives creation and cancellation; private rooms stay hidden (2013.471736ms)
+✔ one match socket receives joins, moves, draw actions and resignation; reconnect gets latest state (2524.400683ms)
+✔ match socket notices authoritative DB changes and reports expiry (1013.543087ms)
+✔ long-poll fallback returns immediately when shared room state changes (272.223013ms)
+✔ online variants, validated clocks, increment and shared timeout adjudication (25.65832ms)
+✔ rematches require opponent consent, swap seats, preserve results and resist duplicate accepts (50.165411ms)
+✔ a declined or cancelled rematch does not reset the finished game (30.161148ms)
+✔ waiting-room quota survives concurrent creation (27.591124ms)
+✔ socket renewal can reconnect to a fresh server without losing a match (232.855734ms)
+✔ WebSocket upgrade cannot bypass the private cookie or same-origin check (5.647888ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11985.918578

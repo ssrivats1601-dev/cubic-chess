@@ -1,0 +1,9 @@
+tests
+docs
+.github
+test-results
+.env*
+.local
+compose.yaml
+README.md
+VERIFICATION.md

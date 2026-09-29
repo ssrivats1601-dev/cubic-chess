@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "fluid": true,
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
+  "functions": {
+    "api/server.js": {
+      "maxDuration": 60,
+      "includeFiles": "{src/**,migrations/**}"
+    }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/server" }]
+}
