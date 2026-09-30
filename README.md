@@ -9,6 +9,7 @@ Source repository: [ssrivats1601-dev/cubic-chess](https://github.com/ssrivats160
 | Feature | Implementation |
 | --- | --- |
 | 3D chess | Layer 1–8, files a–h, ranks 1–8; starting pieces on layer 1; king, rook, bishop, queen, knight and pawn rules |
+| Computer opponent | Easy, Medium, Hard and Expert; either color; module-worker search, paired undo, saved games and every board variant |
 | Legal games | Turns, blockers, check, mate, stalemate, castling on layer 1, promotion, en passant, repetition and king-only draws |
 | Variants | 4×4×4, 6×6×6, 8×8×4, 8×8×8, single-floor and custom 4–8 files × 4–8 ranks × 1–8 layers |
 | Clocks | Untimed or 1–180 minutes, increment 0–60 seconds; server decides online timeouts |
@@ -150,3 +151,9 @@ Checked September 29, 2026:
 - [Vercel project configuration](https://vercel.com/docs/project-configuration/vercel-json)
 - [Vercel connection pooling](https://vercel.com/kb/guide/connection-pooling-with-functions)
 - [PostgreSQL providers through Vercel](https://vercel.com/docs/postgres)
+
+## Playing the computer
+
+Open New game, choose Computer opponent under On-device game, choose a difficulty and your color, then Start bot game. Easy selects random legal moves; Medium scores captures and safety; Hard and Expert search progressively deeper within 1.2 and 2.5 second budgets. These levels have no Elo rating. Search runs in a worker, with a legal-move fallback if workers are unavailable. Bot games need no database connection and save on the current browser. Undo returns to your previous turn; automatic draw rules, promotion, clocks, resignation and rematches are supported. Human draw-agreement controls are hidden in bot games.
+
+The board fits the viewport and keeps square cells on rectangular variants. Tablet layouts put match details below the board, and mobile controls use touch-friendly sizing.

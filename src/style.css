@@ -19,3 +19,34 @@ body[data-page=setup] .join-column,body[data-page=setup] .room-directory,body[da
 body[data-page=lobby] .room-directory,body[data-page=lobby] .lobby-footnote,body[data-page=rooms] .lobby-grid{display:none}
 #room-search{display:grid;grid-template-columns:minmax(0,1fr) 180px auto;gap:14px;align-items:end;margin:24px 0}#room-search label{display:grid;gap:8px;font-size:14px}#room-search-count{grid-column:1/-1;font-size:14px;color:var(--muted);margin:0}.match-result{padding:26px;border:1px solid var(--green);border-radius:14px;background:var(--card);margin:0 0 24px;box-shadow:inset 5px 0 var(--green)}.result-summary{display:flex;align-items:center;gap:24px}.result-score{font-size:clamp(32px,5vw,58px);font-weight:700;color:var(--green);white-space:nowrap;font-variant-numeric:tabular-nums}.result-summary h2{margin:5px 0;font-size:28px}.match-result p{font-size:14px;color:var(--muted)}.result-actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}#rematch-controls{border-top:1px solid var(--line);padding-top:18px}#rematch-controls a{text-decoration:none}#rematch-controls p{margin:10px 0}.local-results{margin:24px 0}.local-results article{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin:10px 0}.local-results pre{white-space:pre-wrap;font-size:13px;max-height:350px;overflow:auto}.local-results summary{cursor:pointer}
 @media(max-width:720px){#room-search{grid-template-columns:1fr}#room-search-count{grid-column:1}.match-result{padding:18px}.result-summary{gap:14px;align-items:flex-start}.result-summary h2{font-size:23px}.result-actions button{flex:1 1 140px}}
+
+/* Board cells preserve their square shape across rectangular variants and screens. */
+.board-panel,.match-panel,.layer-panel{min-width:0}
+.board-wrap{width:100%;max-width:var(--board-fit,100%);margin-inline:auto}
+.square .piece{max-width:none;max-height:100%;pointer-events:none}
+.bot-setup{border:1px solid var(--line);border-radius:10px;padding:16px;margin:20px 0;background:var(--soft)}
+.bot-setup>label{display:grid;gap:8px}.bot-setup .setup-grid{margin-top:16px}.bot-setup .setup-note{grid-column:1/-1;margin-bottom:0}
+@media(min-width:721px) and (max-width:1100px){
+ .arena{grid-template-columns:minmax(0,1fr)}
+ .layer-panel,.board-panel,.match-panel{grid-column:1}
+ .layers{flex-direction:row}.layer-button{flex:1;min-width:0;justify-content:center;padding:8px 4px}
+ .layer-thumb,.layer-explainer{display:none}
+ .board-panel{width:100%;max-width:850px;justify-self:center}
+ .match-panel{width:100%;max-width:850px;justify-self:center}
+}
+@media(max-width:420px){
+ main,.site-header{padding-left:10px;padding-right:10px}
+ .board-panel{padding:9px}.board-wrap{padding-left:16px}.board-tools{gap:4px}
+ .board-heading .eyebrow{max-width:145px;overflow-wrap:anywhere}
+ .board-legend{flex-wrap:wrap;gap:9px}.square-coordinate{font-size:9px}
+}
+@media(pointer:coarse){.icon-button{min-width:40px;min-height:40px}.layer-button{min-height:48px}}
+
+body[data-page=game] .intro{padding:10px 0 14px}
+@media(max-width:720px){
+ body[data-page=game] .intro{display:none}
+ body[data-page=game] .game-breadcrumb{padding-top:12px;padding-bottom:12px;flex-wrap:wrap}
+ body[data-page=game] .mobile-status{padding:8px;margin-bottom:10px}
+ .board-wrap .file-labels{left:20px}
+}
+@media(max-width:420px){.board-wrap .file-labels{left:16px}}
