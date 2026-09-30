@@ -126,6 +126,11 @@ export function legalMoves(s, from) {
   if(s.result || !Number.isInteger(from) || from<0 || from>=512 || s.board[from]?.color!==s.turn) return [];
   return basicMoves(s,from).filter(m=>!inCheck(applyRaw(s,m),s.turn));
 }
+// Tactical search avoids validating every quiet move at capture-only leaves.
+export function legalCaptures(s,from) {
+  if(s.result || s.board[from]?.color!==s.turn)return [];
+  return basicMoves(s,from).filter(m=>(s.board[m.to]||m.epCapture!==undefined||m.promotion)&&!inCheck(applyRaw(s,m),s.turn));
+}
 export function hasLegalMove(s) {
   for(let i=0;i<512;i++) if(s.board[i]?.color===s.turn && legalMoves(s,i).length) return true;
   return false;
