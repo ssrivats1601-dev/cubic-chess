@@ -1,3 +1,5 @@
+> Bot-strength fix: 56 local unit/UI/integration checks passed, including reproduced hanging-queen and mate-in-one blunders, tactical Easy play, capture-only legality and search-deadline progress. Full browser coverage includes actual-worker queen defence and preserving its candidate on worker failure; see PR #2 for the final CI result.
+
 > Bot/responsive update: build and 52 local tests passed. Adds actual-worker browser coverage for all difficulties, cancellation, black-side play, restore, promotion, timeout, paired undo, rematches and 21 device/board combinations; see the latest GitHub CI run for browser results.
 
 > Update: fixed Vercel empty-output rejection with generated robots.txt; public access is now the default. Earlier private-mode test results below describe the optional gate.
