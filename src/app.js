@@ -1,7 +1,8 @@
+import { DIFFICULTIES, botSettings, chooseBotMove } from './bot.js';
 import { matchScore, matchReport, filterRooms } from './match-end.js';
 import { themes, themeStyle, applyTheme } from './themes.js';
 import { initialState, legalMoves, playMove, coord, index, xyz, FILES, NAMES, sideName, other, inCheck, resultText } from './engine.js';
-import { setupHTML, wireSetup, readSetup } from './setup.js';
+import { setupHTML, wireSetup, readSetup, readOpponent } from './setup.js';
 import { dimensions, startClock, remaining, expireClock, stopClock } from './engine.js';
 import { pieceSVG } from './pieces.js';
 import { OnlineClient, escapeHTML, prettyCode } from './online.js';
@@ -13,6 +14,30 @@ let mode='lobby',room=null,lobbyTab='public',lobbyData={rooms:[],mine:[]},applie
 const movement = {k:'One step in any direction, including between layers.',q:'Any distance along an axis or a face diagonal.',r:'Any distance along one axis: file, rank or layer.',b:'Any distance along a face diagonal: change two axes equally.',n:'Two steps along one axis, one along another. Jumps over pieces.',p:'Forward along the rank on its own layer. Captures diagonally on that layer.'};
 let state = initialState(), undoStack = [], layer = 0, flipped = false, selection = null, options = [], focusedSquare = index(0,0,0), message = '', messageError = false;
 let storageOK = true,announcedResult='';
+let bot=null,botTask=null;
+function cancelBot(){if(botTask){botTask.worker?.terminate();clearTimeout(botTask.timer);clearTimeout(botTask.watchdog);botTask=null;}}
+function scheduleBot(){
+  if(mode!=='local'||!bot||state.result||state.turn===bot.human){cancelBot();return;}
+  if(botTask)return;
+  const snapshot=state,task={};botTask=task;
+  feedback(`${DIFFICULTIES[bot.difficulty].label} bot is thinking… You can explore the layers.`);
+  const finish=(move,fallback=false)=>{
+    if(botTask!==task||mode!=='local'||state!==snapshot)return;
+    cancelBot();
+    if(move){commit(move,move.promote||'q');if(fallback&&!state.result)feedback('Bot used a quick legal move because background search was unavailable. Your turn.');}
+    else feedback('No legal bot move is available.',true);
+  };
+  const fallback=()=>{if(botTask!==task)return;try{finish(chooseBotMove(snapshot,'easy'),true);}catch{cancelBot();feedback('Bot could not move. Undo or start a new game to retry.',true);}};
+  task.timer=setTimeout(()=>{
+    if(botTask!==task)return;
+    try{task.worker=new Worker(new URL('./bot-worker.js',import.meta.url),{type:'module'});task.worker.onmessage=({data})=>data.error?fallback():finish(data.move);task.worker.onerror=fallback;
+      const left=state.clock?remaining(state,state.turn):Infinity;
+      task.worker.postMessage({state:snapshot,difficulty:bot.difficulty,budgetMs:Math.max(20,Math.min(DIFFICULTIES[bot.difficulty].ms,left/4))});
+      task.watchdog=setTimeout(fallback,5000);
+    }catch{fallback();}
+  },120);
+}
+
 function validState(s) {
   return s && Array.isArray(s.board) && s.board.length===512 && ['w','b'].includes(s.turn) && Array.isArray(s.log) && Array.isArray(s.positions) && Number.isInteger(s.ply) && s.ply>=0 &&
     s.board.every(p=>!p || ['w','b'].includes(p.color) && Object.hasOwn(NAMES,p.type)) && ['w','b'].every(c=>s.board.filter(p=>p?.type==='k' && p.color===c).length===1);
@@ -28,7 +53,7 @@ try {
 } catch { storageOK=false; }
 function save() {
   if(mode==='online'){$('save-status').textContent=online.connected?'✓ Match saved online':'Reconnecting · last saved position shown';return;}
-  try { localStorage.setItem(STORE,JSON.stringify({version:2,state,undo:undoStack.slice(-40),layer,flipped}));storageOK=true; }
+  try { localStorage.setItem(STORE,JSON.stringify({version:2,state,undo:undoStack.slice(-40),layer,flipped,bot}));storageOK=true; }
   catch { storageOK=false; }
   $('save-status').innerHTML=mode==='online'?(online.connected?'✓ Match saved online':'Reconnecting · last saved position shown'):storageOK?'<span aria-hidden="true">✓</span> Saved on this browser':'Saving unavailable · keep this tab open';
 }
@@ -79,7 +104,7 @@ function renderBoard() {
 function renderMatch() {
   const check=inCheck(state),turn=sideName(state.turn),ended=!!state.result;
   $('move-count').textContent=`MOVE ${String(Math.floor(state.ply/2)+1).padStart(2,'0')}`;
-  $('turn-status').innerHTML=`<div class="turn-token ${state.turn==='b'?'black':''}">${pieceSVG('k',state.turn)}</div><div class="turn-copy"><strong class="${check&&!ended?'toast-check':''}">${ended?(state.result.winner?`${sideName(state.result.winner)} wins`:'Game drawn'):`${turn} to move`}</strong><small>${ended?resultText(state):check?'Check — protect your king.':mode==='online'?`${room.status==='waiting'?'Waiting for an opponent':room.myColor===state.turn?'Your move':'Opponent’s turn'} · You are ${sideName(room.myColor)}`:'Pass & play · on this device'}</small></div>`;
+  $('turn-status').innerHTML=`<div class="turn-token ${state.turn==='b'?'black':''}">${pieceSVG('k',state.turn)}</div><div class="turn-copy"><strong class="${check&&!ended?'toast-check':''}">${ended?(state.result.winner?`${sideName(state.result.winner)} wins`:'Game drawn'):`${turn} to move`}</strong><small>${ended?resultText(state):check?'Check — protect your king.':mode==='online'?`${room.status==='waiting'?'Waiting for an opponent':room.myColor===state.turn?'Your move':'Opponent’s turn'} · You are ${sideName(room.myColor)}`:bot?`${DIFFICULTIES[bot.difficulty].label} bot · You are ${sideName(bot.human)}`:'Pass & play · on this device'}</small></div>`;
   $('feedback').textContent=message || (ended?resultText(state):'Select a white piece to begin.');$('feedback').classList.toggle('error',messageError);
   $('mobile-turn').textContent=resultText(state);$('mobile-feedback').textContent=$('feedback').textContent;$('mobile-feedback').classList.toggle('error',messageError);
   if(selection) {
@@ -94,14 +119,15 @@ function renderMatch() {
   const history=$('history'),nearBottom=history.scrollHeight-history.scrollTop-history.clientHeight<40;
   history.innerHTML=state.log.length?Array.from({length:Math.ceil(state.log.length/2)},(_,i)=>`<div class="history-row"><span class="history-number">${i+1}.</span>${[state.log[i*2],state.log[i*2+1]].map(m=>`<span class="history-move">${m?.notation||'—'}</span>`).join('')}</div>`).join(''):'<div class="history-empty">A clean slate.<span>Your moves will appear here.</span></div>';
   if(nearBottom) history.scrollTop=history.scrollHeight;
-  $('undo').disabled=mode==='online'||!undoStack.length;$('undo').title=mode==='online'?'Undo is available in local games.':'';
+  $('undo').disabled=mode==='online'||!undoStack.length||!!bot&&!undoStack.some(s=>s.turn===bot.human);$('undo').title=mode==='online'?'Undo is available in local games.':'';
+  $('draw').hidden=!!bot&&mode==='local';document.querySelector('.match-secondary>span').hidden=$('draw').hidden;
   $('resign').disabled=ended||mode==='online'&&(room.status!=='active'||online.busy);$('draw').disabled=ended||mode==='online'&&(room.status!=='active'||!!room.drawOffer||online.busy);
   $('new-game').innerHTML=mode==='online'?'← Lobby':'<span aria-hidden="true">+</span> New game';$('draw').textContent=mode==='online'?'Offer draw':'Agree a draw';
   $('save-status').innerHTML=mode==='online'?(online.connected?'✓ Match saved online':'Reconnecting · last saved position shown'):storageOK?'<span aria-hidden="true">✓</span> Saved on this browser':'Saving unavailable · keep this tab open';
 }
 function renderResult(){
   const panel=$('match-result');panel.hidden=!state.result;if(!state.result){announcedResult='';panel.innerHTML='';return;}
-  const c=dimensions(state),players=mode==='online'?room.players:{w:{name:'White'},b:{name:'Black'}};
+  const c=dimensions(state),players=mode==='online'?room.players:bot?Object.fromEntries(['w','b'].map(c=>[c,{name:c===bot.human?'You':DIFFICULTIES[bot.difficulty].label+' bot'}])):{w:{name:'White'},b:{name:'Black'}};
   const winner=state.result.winner,rematch=state.rematch;
   panel.innerHTML=`<div class="result-summary"><span class="result-score">${matchScore(state)}</span><div><div class="eyebrow">MATCH COMPLETE</div><h2 id="result-heading" tabindex="-1" role="status">${escapeHTML(resultText(state))}</h2><p>${winner?escapeHTML(players[winner]?.name||sideName(winner))+' takes the match.':'Neither side wins this match.'} ${state.ply} plies · ${c.files} × ${c.ranks} × ${c.layers} · ${c.minutes?`${c.minutes}+${c.increment}`:'Untimed'}</p></div></div><p>Explore the final position on any layer or read the move history below.</p><div class="result-actions"><button id="export-match" class="secondary-button">Download move record</button><button id="inspect-result" class="secondary-button">Inspect final board</button><button id="result-new" class="secondary-button">New game setup</button><button id="result-lobby" class="text-button">Back to lobby</button></div><div id="rematch-controls"></div>`;
   const noticeKey=(room?.code||'local')+state.ply+state.result.kind+(state.result.winner||'');if(announcedResult!==noticeKey&&!$('game-view').hidden){announcedResult=noticeKey;panel.scrollIntoView?.({behavior:'smooth',block:'start'});$('result-heading').focus({preventScroll:true});}
@@ -109,13 +135,17 @@ function renderResult(){
   $('inspect-result').onclick=()=>{$('board').scrollIntoView({behavior:'smooth',block:'center'});document.querySelector('[data-square][tabindex="0"]')?.focus({preventScroll:true});};
   $('result-new').onclick=()=>navigate('setup');$('result-lobby').onclick=()=>navigate('lobby');
   const controls=$('rematch-controls');
-  if(mode!=='online'){controls.innerHTML='<button id="local-rematch" class="primary-button">Play again · same settings</button><p>The completed local match is kept in your browser’s last 10 results.</p>';$('local-rematch').onclick=()=>{newGame(c);flipped=!flipped;render();save();};return;}
+  if(mode!=='online'){controls.innerHTML='<button id="local-rematch" class="primary-button">Play again · same settings</button><p>The completed local match is kept in your browser’s last 10 results.</p>';$('local-rematch').onclick=()=>{newGame(c);if(!bot)flipped=!flipped;render();save();};return;}
   if(rematch?.code){controls.innerHTML=`<a class="primary-button" href="#room=${rematch.code}">Open rematch</a><p>Colors swapped. Same board and clock. The new clock started when the rematch was accepted. This result stays available.</p>`;return;}
   const offered=rematch?.offeredBy;
   controls.innerHTML=offered===room.myColor?'<p role="status">Rematch offered. Waiting for your opponent.</p><button class="secondary-button" data-rematch="cancel-rematch">Cancel offer</button>':offered?'<p role="status">Your opponent offers a rematch with colors swapped.</p><button class="primary-button" data-rematch="accept-rematch">Accept rematch</button> <button class="secondary-button" data-rematch="decline-rematch">Decline</button>':'<button class="primary-button" data-rematch="offer-rematch">Offer rematch · swap colors</button><p>Both players must agree. Board dimensions and clock settings stay the same.</p>';
   controls.querySelectorAll('[data-rematch]').forEach(b=>{b.disabled=online.busy||!online.connected;b.onclick=()=>sendOnline(b.dataset.rematch);});
 }
+function sizeBoard(){const c=dimensions(state),height=Math.max(c.ranks*32,Math.min(760,(window.visualViewport?.height||window.innerHeight)-220));document.documentElement.style.setProperty('--board-fit',`${Math.round(height*c.files/c.ranks+20)}px`);}
+window.addEventListener('resize',sizeBoard);window.visualViewport?.addEventListener('resize',sizeBoard);
 function render() {
+  sizeBoard();
+  if(mode==='local'){$('mode-label').innerHTML=bot?'<i></i> COMPUTER OPPONENT':'<i></i> LOCAL TWO-PLAYER';$('game-kind').textContent=bot?`${DIFFICULTIES[bot.difficulty].label.toUpperCase()} BOT · YOU ARE ${sideName(bot.human).toUpperCase()}`:'LOCAL MATCH';}
   const c=dimensions(state);layer=Math.min(layer,c.layers-1);
   document.documentElement.style.setProperty('--files',c.files);document.documentElement.style.setProperty('--ranks',c.ranks);
   document.querySelector('.dimension-mark>span').textContent=`${c.files} × ${c.ranks} × ${c.layers}`;
@@ -130,11 +160,13 @@ function render() {
   renderLayers();renderBoard();renderMatch();renderClocks();
   const restore=focusKind==='square'?document.querySelector(`[data-square="${focusedSquare}"]`):focusKind==='layer'?document.querySelector(`[data-layer="${focusValue}"]`):null;
   restore?.focus({preventScroll:true});
+  scheduleBot();
 }
 function selectSquare(i) {
   focusedSquare=i;
   if(state.result) {feedback(`${resultText(state)}. ${mode==='online'?'Return to the lobby for another game.':'Start a new game or undo a move.'}`);return;}
   if(mode==='online'&&(room.status!=='active'||room.myColor!==state.turn||online.busy||!online.connected)){feedback(room.status==='waiting'?'Share the room code and wait for your opponent.':!online.connected?'Reconnecting. Wait for the board to sync.':online.busy?'Sending your move…':'It is your opponent’s turn.',true);return;}
+  if(mode==='local'&&bot&&state.turn!==bot.human){feedback('The bot is thinking. Wait for your turn.');return;}
   if(selection && options.some(m=>m.to===i)) {
     const request=options.find(m=>m.to===i);
     if(request.promotion) choosePromotion(request);else commit(request);
@@ -168,7 +200,7 @@ function choosePromotion(move) {
   for(const b of document.querySelectorAll('[data-promotion]')) b.onclick=()=>{$('modal').close();commit(move,b.dataset.promotion);};
 }
 function rulesHTML() {
-  return `<h2 id="modal-title">Welcome to the third dimension.</h2><p>Play across the internet in an online room, or share one device in local mode. White goes first. All pieces start on layer 1; the army size depends on the number of files. Select a piece, choose a highlighted layer, then tap a highlighted destination. Protect your king on every layer.</p><div class="guide-steps"><h3>Your first game</h3><ol><li>Open the New game page to choose board dimensions and a clock, then create an online room or start locally. The Lobby is for joining rooms; My matches lists your online games.</li><li>White starts. Select a piece on the visible layer. Dots are legal destinations; rings indicate captures.</li><li>Keep the piece selected and choose a numbered layer badge to see destinations on another floor. Tap a highlighted square to complete the move.</li><li>Watch the turn label, move history and clocks. The board follows the last move, but you can explore any layer.</li></ol></div><div class="rules-grid">${['k','q','r','b','n','p'].map(t=>`<div class="rule-item">${pieceSVG(t,'w')}<div><strong>${NAMES[t]}</strong><p>${movement[t]}</p></div></div>`).join('')}</div><div class="rule-notes"><h3>Variants & starting armies</h3><p>Dimensions are <strong>files × ranks × layers</strong>. Choose 4–8 files, 4–8 ranks and 1–8 layers. Both sides use the same back rank from file a, with a pawn in front of every piece. White begins on ranks 1 and 2; Black on the last two ranks. Narrow armies: 4 files R K N R; 5 R N K Q R; 6 R N B K N R; 7 R N B K Q N R; 8 R N B Q K B N R. R=rook, N=knight, B=bishop, Q=queen, K=king. No Jester or Count.</p><p>4×4×4 is close combat: the pawn lines begin adjacent. Pawns cannot take a two-rank first move on boards with four or five ranks. On eight-file boards, castling uses the usual c/g king destinations on the home rank. Other widths have no castling. Promotion is on the opposite final rank.</p><h3>Clocks & connection</h3><p>Each player gets the selected time. Increment is added after each legal completed move. Online clocks begin when the second player joins; local clocks begin when you start a new game. Clocks keep running while a tab is hidden, a dialog is open, or a player disconnects. Promotion must be chosen before time runs out. A player whose time reaches zero loses. Untimed games have no deadline.</p><p>Online timeouts are decided by the server. The display counts down between updates; during disconnection, it is an estimate until the match reconnects. Online undo is disabled. Local undo restores the preceding position and its clock balance, then restarts the clock. Local games continue counting down after closing the browser.</p><h3>Movement examples</h3><p>From 3d4: a rook may go to 6d4 (layers only); a bishop to 5f4 (two layers and two files); a knight to 5e4 (two layers and one file); a king to 4e5 (one step on all three axes). Examples require the coordinates to exist on your board. Sliding pieces cannot jump; knights can. No move may expose your king.</p><p><strong>Coordinates:</strong> layer + file + rank. <code>1e1</code> is layer 1, file e, rank 1. <code>3e1</code> is directly two layers above it.</p><p><strong>Face diagonals:</strong> two coordinates change by the same amount; the third stays fixed. Queens and bishops cannot travel along a three-axis space diagonal.</p><p><strong>Castling:</strong> eight-file boards on layer 1 only, from file e on the home rank. King and original rook must be unmoved, with a clear path. The king cannot start in, cross, or finish in check, including attacks from other layers.</p><p><strong>Pawn defaults:</strong> ordinary chess moves on its own layer; one rank forward, or two from its starting rank if clear on boards with at least six ranks. Captures one file diagonally forward. En passant lasts one turn. Promote to queen, rook, bishop or knight on the final rank.</p><p><strong>Captures:</strong> captured pieces leave the game permanently.</p><p><strong>Winning:</strong> checkmate. Kings are never captured. Stalemate, threefold repetition and kings-only positions are automatic draws; players may also agree a draw. Local undo keeps the last 40 actions. Online moves are final; a draw needs both players’ agreement.</p><p><strong>Controls:</strong> tap or click to select and move. Use <kbd>[</kbd> / <kbd>]</kbd> to switch layers, arrow keys within the board, <kbd>Enter</kbd> to select, and <kbd>Esc</kbd> to clear a selection.</p><p><strong>Your game:</strong> online matches are saved on the server and refresh automatically. Your seat reconnects from the same browser. Local matches save in this browser. Public rooms are listed for site visitors; private rooms require a code. The site’s access settings still apply to both kinds of room. Waiting rooms expire after 30 minutes, matches after 7 days without a game action.</p></div><div class="modal-actions"><button class="primary-button" id="back-to-game">Back to the cube</button></div>`;
+  return `<h2 id="modal-title">Welcome to the third dimension.</h2><p>Play across the internet in an online room, or share one device in local mode. White goes first. All pieces start on layer 1; the army size depends on the number of files. Select a piece, choose a highlighted layer, then tap a highlighted destination. Protect your king on every layer.</p><div class="guide-steps"><h3>Play the computer</h3><p>On New game, choose Computer opponent under On-device game, select Easy, Medium, Hard or Expert and your side, then Start bot game. Easy chooses random legal moves; higher levels evaluate material and search replies within a time budget. Strength depends on board size and your device; levels have no Elo rating. Bots support every variant, promotion, clocks, resignation and rematches. Undo takes back your move and the bot reply; while it is thinking, undo cancels the pending reply. Bot games save on this browser. Draw offers are only available against people; normal automatic draw rules still apply.</p><h3>Your first game</h3><ol><li>Open the New game page to choose board dimensions and a clock, then create an online room or start locally. The Lobby is for joining rooms; My matches lists your online games.</li><li>White starts. Select a piece on the visible layer. Dots are legal destinations; rings indicate captures.</li><li>Keep the piece selected and choose a numbered layer badge to see destinations on another floor. Tap a highlighted square to complete the move.</li><li>Watch the turn label, move history and clocks. The board follows the last move, but you can explore any layer.</li></ol></div><div class="rules-grid">${['k','q','r','b','n','p'].map(t=>`<div class="rule-item">${pieceSVG(t,'w')}<div><strong>${NAMES[t]}</strong><p>${movement[t]}</p></div></div>`).join('')}</div><div class="rule-notes"><h3>Variants & starting armies</h3><p>Dimensions are <strong>files × ranks × layers</strong>. Choose 4–8 files, 4–8 ranks and 1–8 layers. Both sides use the same back rank from file a, with a pawn in front of every piece. White begins on ranks 1 and 2; Black on the last two ranks. Narrow armies: 4 files R K N R; 5 R N K Q R; 6 R N B K N R; 7 R N B K Q N R; 8 R N B Q K B N R. R=rook, N=knight, B=bishop, Q=queen, K=king. No Jester or Count.</p><p>4×4×4 is close combat: the pawn lines begin adjacent. Pawns cannot take a two-rank first move on boards with four or five ranks. On eight-file boards, castling uses the usual c/g king destinations on the home rank. Other widths have no castling. Promotion is on the opposite final rank.</p><h3>Clocks & connection</h3><p>Each player gets the selected time. Increment is added after each legal completed move. Online clocks begin when the second player joins; local clocks begin when you start a new game. Clocks keep running while a tab is hidden, a dialog is open, or a player disconnects. Promotion must be chosen before time runs out. A player whose time reaches zero loses. Untimed games have no deadline.</p><p>Online timeouts are decided by the server. The display counts down between updates; during disconnection, it is an estimate until the match reconnects. Online undo is disabled. Local undo restores the preceding position and its clock balance, then restarts the clock. Local games continue counting down after closing the browser.</p><h3>Movement examples</h3><p>From 3d4: a rook may go to 6d4 (layers only); a bishop to 5f4 (two layers and two files); a knight to 5e4 (two layers and one file); a king to 4e5 (one step on all three axes). Examples require the coordinates to exist on your board. Sliding pieces cannot jump; knights can. No move may expose your king.</p><p><strong>Coordinates:</strong> layer + file + rank. <code>1e1</code> is layer 1, file e, rank 1. <code>3e1</code> is directly two layers above it.</p><p><strong>Face diagonals:</strong> two coordinates change by the same amount; the third stays fixed. Queens and bishops cannot travel along a three-axis space diagonal.</p><p><strong>Castling:</strong> eight-file boards on layer 1 only, from file e on the home rank. King and original rook must be unmoved, with a clear path. The king cannot start in, cross, or finish in check, including attacks from other layers.</p><p><strong>Pawn defaults:</strong> ordinary chess moves on its own layer; one rank forward, or two from its starting rank if clear on boards with at least six ranks. Captures one file diagonally forward. En passant lasts one turn. Promote to queen, rook, bishop or knight on the final rank.</p><p><strong>Captures:</strong> captured pieces leave the game permanently.</p><p><strong>Winning:</strong> checkmate. Kings are never captured. Stalemate, threefold repetition and kings-only positions are automatic draws; players may also agree a draw. Local undo keeps the last 40 actions. Online moves are final; a draw needs both players’ agreement.</p><p><strong>Controls:</strong> tap or click to select and move. Use <kbd>[</kbd> / <kbd>]</kbd> to switch layers, arrow keys within the board, <kbd>Enter</kbd> to select, and <kbd>Esc</kbd> to clear a selection.</p><p><strong>Your game:</strong> online matches are saved on the server and refresh automatically. Your seat reconnects from the same browser. Local matches save in this browser. Public rooms are listed for site visitors; private rooms require a code. The site’s access settings still apply to both kinds of room. Waiting rooms expire after 30 minutes, matches after 7 days without a game action.</p></div><div class="modal-actions"><button class="primary-button" id="back-to-game">Back to the cube</button></div>`;
 }
 $('layers').onclick=e=>{const b=e.target.closest('[data-layer]');if(b)setLayer(+b.dataset.layer);};
 $('board').onclick=e=>{const b=e.target.closest('[data-square]');if(b)selectSquare(+b.dataset.square);};
@@ -184,11 +216,11 @@ $('board').onkeydown=e=>{
 $('previous-layer').onclick=()=>setLayer(layer-1);$('next-layer').onclick=()=>setLayer(layer+1);
 $('flip').onclick=()=>{flipped=!flipped;render();save();feedback(`Board flipped. ${flipped?'Black':'White'} is closest to you.`);};
 $('clear-selection').onclick=()=>{clearSelection();message='Selection cleared. Choose a piece.';messageError=false;render();};
-$('undo').onclick=()=>{if(mode==='online'||!undoStack.length)return;const previous=state.lastMove;state=undoStack.pop();if(state.clock)state={...state,clock:{...state.clock,startedAt:Date.now()}};clearSelection();layer=previous?xyz(previous.from??previous.to)[0]:0;focusedSquare=layer*64;message=`Last action undone. ${resultText(state)}.`;messageError=false;render();save();};
-function newGame(config=dimensions(state)){if(mode==='local'&&state.result){try{const archive=JSON.parse(localStorage.getItem('cubehouse.completed')||'[]');archive.unshift({finishedAt:Date.now(),state});localStorage.setItem('cubehouse.completed',JSON.stringify(archive.slice(0,10)));}catch{}}state=startClock(initialState(config));undoStack=[];layer=0;focusedSquare=0;clearSelection();message='New game. White moves first.';messageError=false;render();save();}
+$('undo').onclick=()=>{if(mode==='online'||!undoStack.length||bot&&!undoStack.some(s=>s.turn===bot.human))return;cancelBot();const previous=state.lastMove;do{state=undoStack.pop();}while(bot&&state.turn!==bot.human&&undoStack.length);if(state.clock)state={...state,clock:{...state.clock,startedAt:Date.now()}};clearSelection();layer=previous?xyz(previous.from??previous.to)[0]:0;focusedSquare=layer*64;message=`Last action undone. ${resultText(state)}.`;messageError=false;render();save();};
+function newGame(config=dimensions(state)){cancelBot();if(bot)flipped=bot.human==='b';if(mode==='local'&&state.result){try{const archive=JSON.parse(localStorage.getItem('cubehouse.completed')||'[]');archive.unshift({finishedAt:Date.now(),state});localStorage.setItem('cubehouse.completed',JSON.stringify(archive.slice(0,10)));}catch{}}state=startClock(initialState(config));undoStack=[];layer=0;focusedSquare=0;clearSelection();message='New game. White moves first.';messageError=false;render();save();}
 $('new-game').onclick=()=>{if(mode==='online'){showLobby();return;}openSetup();};
 $('resign').onclick=()=>{
-  const color=mode==='online'?room.myColor:state.turn;
+  const color=mode==='online'?room.myColor:bot?bot.human:state.turn;
   confirmAction(`${sideName(color)} resigns?`,`${sideName(other(color))} will win this game.`,`Resign as ${sideName(color)}`,()=>{
     if(mode==='online'){sendOnline('resign');return;}
     if(state.result)return;
@@ -251,6 +283,7 @@ async function copyInvite(){
   catch{showModal(`<h2 id="modal-title">Invite your opponent.</h2><p>Copy this link and share it with someone who has access to the site.</p><input class="text-input" id="invite-link" readonly value="${escapeHTML(link)}"><p>Room code: <strong>${prettyCode(room.code)}</strong></p>`);$('invite-link').select();}
 }
 function enterOnline(next){
+  cancelBot();bot=null;
   setScreen('game');online.stop();online.busy=false;mode='online';room=next;state=next.state;online.remember(next);appliedRevision=-1;clearSelection();undoStack=[];
   layer=state.lastMove?xyz(state.lastMove.to)[0]:0;focusedSquare=layer*64;flipped=next.myColor==='b';
   $('lobby-view').hidden=true;$('game-view').hidden=false;$('mode-label').innerHTML='<i></i> ONLINE MATCH';$('game-kind').textContent=`${next.visibility.toUpperCase()} ROOM · ${prettyCode(next.code)}`;
@@ -261,8 +294,9 @@ function enterOnline(next){
   scrollTo({top:0,behavior:'instant'});
 }
 function startLocal(){
+  cancelBot();bot=null;
   setScreen('game');  online.stop();room=null;mode='local';state=initialState();undoStack=[];layer=0;flipped=false;clearSelection();
-  try{const s=JSON.parse(localStorage.getItem(STORE));if(s?.version===2&&validState(s.state)){state=s.state;undoStack=(s.undo||[]).filter(validState).slice(-40);layer=Number.isInteger(s.layer)&&s.layer>=0&&s.layer<8?s.layer:0;flipped=!!s.flipped;}}catch{}
+  try{const s=JSON.parse(localStorage.getItem(STORE));if(s?.version===2&&validState(s.state)){state=s.state;bot=botSettings(s.bot);undoStack=(s.undo||[]).filter(validState).slice(-40);layer=Number.isInteger(s.layer)&&s.layer>=0&&s.layer<8?s.layer:0;flipped=!!s.flipped;}}catch{}
   focusedSquare=layer*64;message=state.ply?'Local game restored. Pick up where you left off.':'White moves first. Choose a piece.';messageError=false;
   $('lobby-view').hidden=true;$('game-view').hidden=false;$('mode-label').innerHTML='<i></i> LOCAL TWO-PLAYER';$('game-kind').textContent='LOCAL MATCH';history.replaceState(null,'','#local');$('resume-match').href='#local';render();save();scrollTo({top:0,behavior:'instant'});
 }
@@ -293,6 +327,7 @@ function refreshLobby(){
   });
 }
 function showLobby(page='lobby'){
+  cancelBot();
   if(typeof page!=='string')page='lobby';setScreen(page);
   online.stop();mode='lobby';room=null;clearSelection();$('game-view').hidden=true;$('lobby-view').hidden=false;$('mode-label').innerHTML='<i></i> ONLINE CHESS';history.replaceState(null,'','#/'+page);lobbyTab=page==='matches'?'mine':'public';lobbyMessage('');renderRoomList();refreshLobby();scrollTo({top:0,behavior:'instant'});
 }
@@ -326,12 +361,12 @@ async function boot(){
 }
 matchMedia('(min-width: 901px)').addEventListener('change',renderLayers);
 $('lobby-setup').innerHTML=setupHTML();wireSetup();
-$('new-local-setup').onclick=()=>{try{const config=readSetup();const begin=()=>{startLocal();newGame(config);};if(localStorage.getItem(STORE))confirmAction('Replace the local game?','This starts a new local match with the selected board and clock.','Start local game',begin);else begin();}catch(e){lobbyMessage(e.message,true);}};
+$('new-local-setup').onclick=()=>{try{const config=readSetup(),opponent=readOpponent();const begin=()=>{startLocal();cancelBot();bot=opponent;newGame(config);};if(localStorage.getItem(STORE))confirmAction('Replace the local game?','This starts a new on-device match with the selected opponent, board and clock.','Start game',begin);else begin();}catch(e){lobbyMessage(e.message,true);}};
 let themeId='forest';try{themeId=localStorage.getItem('cubehouse.theme')||'forest';}catch{}applyTheme(themeId);
 function openSetup(){
   $('lobby-setup').innerHTML='';
-  showModal(`<h2 id="modal-title">Make this game yours.</h2><p>Start a new local game. This replaces the saved local match.</p>${setupHTML()}<p id="setup-error" role="alert"></p><button id="start-configured" class="primary-button">Start new game</button>`);wireSetup();
-  $('start-configured').onclick=()=>{try{const c=readSetup();$('modal').close();newGame(c);}catch(e){$('setup-error').textContent=e.message;}};
+  showModal(`<h2 id="modal-title">Make this game yours.</h2><p>Start a new local game. This replaces the saved local match.</p>${setupHTML(bot)}<p id="setup-error" role="alert"></p><button id="start-configured" class="primary-button">Start new game</button>`);wireSetup();
+  $('start-configured').onclick=()=>{try{const c=readSetup(),opponent=readOpponent();$('modal').close();cancelBot();bot=opponent;newGame(c);}catch(e){$('setup-error').textContent=e.message;}};
 }
 $('modal').addEventListener('close',()=>{if(!$('lobby-setup').children.length){$('modal-content').innerHTML='';$('lobby-setup').innerHTML=setupHTML();wireSetup();}});
 function renderClocks(){

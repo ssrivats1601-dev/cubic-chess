@@ -7,7 +7,7 @@ import { gameApi, socketGrant } from './game-api.js';
 import { liveSocket } from './socket.js';
 
 // All assets pass the same gate; no protected file is placed in public/.
-const files=['index.html','style.css','app.js','engine.js','online.js','themes.js','pieces.js','setup.js','match-end.js','favicon.svg'];
+const files=['index.html','style.css','app.js','engine.js','online.js','themes.js','pieces.js','setup.js','match-end.js','bot.js','bot-worker.js','favicon.svg'];
 const assets=new Map(files.map(name=>['/'+name,new URL('../src/'+name,import.meta.url)]));
 const mime={html:'text/html; charset=utf-8',css:'text/css; charset=utf-8',js:'text/javascript; charset=utf-8',svg:'image/svg+xml'};
 const common={
@@ -76,7 +76,9 @@ export function createServer({env=process.env,db:providedDb,socketLifetime=45000
       if(!['GET','HEAD'].includes(req.method))return json(405,{error:'Method not allowed.'});
       const asset=assets.get(path==='/'?'/index.html':path);
       if(!asset)return json(404,{error:'Page not found.'});
-      return send(200,await readFile(asset),mime[asset.pathname.split('.').pop()]);
+      let content=await readFile(asset);
+      if(auth.public&&asset.pathname.endsWith('/index.html'))content=content.toString().replace(/<form method="post" action="\/auth\/logout">.*?<\/form>/,'');
+      return send(200,content,mime[asset.pathname.split('.').pop()]);
     }catch(e){if(!e.status)console.error('Cubic Chess HTTP request failed:',e.code||'internal');return json(e.status||503,{error:e.status?e.message:'The service is temporarily unavailable. Please retry.'});}
   });
   server.on('upgrade',async(req,socket,head)=>{

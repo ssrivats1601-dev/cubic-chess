@@ -14,9 +14,9 @@
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
     "db:cleanup": "node --env-file-if-exists=.env scripts/cleanup.mjs",
     "test": "npm run test:unit && npm run test:integration",
-    "test:unit": "node --test tests/engine.test.mjs tests/themes.test.mjs tests/match-end.test.mjs tests/ui.test.mjs tests/online.test.mjs",
+    "test:unit": "node --test tests/engine.test.mjs tests/themes.test.mjs tests/match-end.test.mjs tests/ui.test.mjs tests/online.test.mjs tests/bot.test.mjs",
     "test:integration": "node --env-file-if-exists=.env --test tests/server.test.mjs",
-    "test:browser": "node --env-file-if-exists=.env tests/browser.test.mjs && node --env-file-if-exists=.env tests/online-browser.test.mjs",
+    "test:browser": "node --env-file-if-exists=.env tests/browser.test.mjs && node --env-file-if-exists=.env tests/online-browser.test.mjs && node tests/bot-browser.test.mjs",
     "check": "npm run build && npm test",
     "test:portable": "npm run test:unit && node scripts/test-portable.mjs",
     "setup": "node scripts/setup.mjs"

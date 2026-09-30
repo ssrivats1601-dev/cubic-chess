@@ -117,6 +117,11 @@ function applyRaw(s,m,promotion='q') {
   if(m.double) next.ep={target:(m.from+m.to)/2,captured:m.to};
   return next;
 }
+// Search only: callers must supply a move from legalMoves. Real moves still
+// pass through playMove, including clocks, repetition and terminal adjudication.
+export function searchPosition(s,move,promotion='q') {
+  return {...applyRaw(s,move,promotion),turn:other(s.turn),ply:s.ply+1,clock:null};
+}
 export function legalMoves(s, from) {
   if(s.result || !Number.isInteger(from) || from<0 || from>=512 || s.board[from]?.color!==s.turn) return [];
   return basicMoves(s,from).filter(m=>!inCheck(applyRaw(s,m),s.turn));
