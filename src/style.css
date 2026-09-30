@@ -41,3 +41,12 @@ body[data-page=lobby] .room-directory,body[data-page=lobby] .lobby-footnote,body
  .board-legend{flex-wrap:wrap;gap:9px}.square-coordinate{font-size:9px}
 }
 @media(pointer:coarse){.icon-button{min-width:40px;min-height:40px}.layer-button{min-height:48px}}
+
+body[data-page=game] .intro{padding:10px 0 14px}
+@media(max-width:720px){
+ body[data-page=game] .intro{display:none}
+ body[data-page=game] .game-breadcrumb{padding-top:12px;padding-bottom:12px;flex-wrap:wrap}
+ body[data-page=game] .mobile-status{padding:8px;margin-bottom:10px}
+ .board-wrap .file-labels{left:20px}
+}
+@media(max-width:420px){.board-wrap .file-labels{left:16px}}

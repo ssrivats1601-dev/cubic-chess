@@ -25,7 +25,7 @@ try{
   await page.goto(origin+'/#local');await page.waitForSelector('[data-square]');
   assert.equal(await page.getByRole('button',{name:'Sign out',exact:true}).count(),0);
   for(const difficulty of ['easy','medium','hard','expert']){
-    await start(difficulty);await humanMove();await waitPly(2);assert.equal((await saved()).state.turn,'w');
+    await start(difficulty);await humanMove();await waitPly(2);assert.equal((await saved()).state.turn,'w');assert.doesNotMatch(await page.locator('#feedback').textContent(),/background search was unavailable/);
     assert.equal(await page.locator('#draw').isVisible(),false);
     await page.locator('#undo').click();await waitPly(0);assert.equal((await saved()).state.turn,'w');
   }
@@ -55,8 +55,9 @@ try{
     for(const [width,height]of [[320,650],[390,844],[844,390],[768,1024],[1024,768],[1440,1000],[1920,1080]]){
       await page.setViewportSize({width,height});
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow ${files}x${ranks} at ${width}`);
-      const box=await page.locator('#board').boundingBox(),cell=await page.locator('[data-square]').first().boundingBox();
+      await page.waitForTimeout(50);const box=await page.locator('#board').boundingBox(),cell=await page.locator('[data-square]').first().boundingBox();
       assert.ok(Math.abs(cell.width-cell.height)<2,`square cells ${files}x${ranks} at ${width}`);
+      if(width>=1101)assert.ok(box.y+box.height<=height,`full board visible on desktop ${width}x${height}`);
       assert.ok(box.width<=width&&box.height<=height,`board fits ${files}x${ranks} at ${width}x${height}`);
     }
   }

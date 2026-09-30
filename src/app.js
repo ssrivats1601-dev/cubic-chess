@@ -81,7 +81,7 @@ function renderLayers() {
     return `<button class="layer-button ${layer===l?'active':''} ${moves?'has-moves':''}" data-layer="${l}" aria-pressed="${layer===l}" aria-label="Layer ${l+1}, ${count} pieces${selection?`, ${moves} legal moves`:''}" style="order:${l}">${layerMini(l)}<span class="layer-description"><strong><span class="layer-word">Layer </span>${l+1}</strong><small data-short="${count?count+' pcs':'—'}">${count?`${count} piece${count===1?'':'s'}`:'Empty'}</small></span>${moves?`<span class="move-badge">${moves}</span>`:''}</button>`;
   }).join('');
   // In the desktop stack, the uppermost layer is at the top. The compact row reads 1–8.
-  if(matchMedia('(min-width: 901px)').matches) for(const button of $('layers').children) button.style.order=dimensions(state).layers-1-Number(button.dataset.layer);
+  if(matchMedia('(min-width: 1101px)').matches) for(const button of $('layers').children) button.style.order=dimensions(state).layers-1-Number(button.dataset.layer);
 }
 function playerLabel(c) {return `<i class="player-dot ${c}"></i><span>${sideName(c).toUpperCase()}</span>${state.turn===c&&!state.result?'<span class="playing">to move</span>':''}`;}
 function renderBoard() {
@@ -141,7 +141,7 @@ function renderResult(){
   controls.innerHTML=offered===room.myColor?'<p role="status">Rematch offered. Waiting for your opponent.</p><button class="secondary-button" data-rematch="cancel-rematch">Cancel offer</button>':offered?'<p role="status">Your opponent offers a rematch with colors swapped.</p><button class="primary-button" data-rematch="accept-rematch">Accept rematch</button> <button class="secondary-button" data-rematch="decline-rematch">Decline</button>':'<button class="primary-button" data-rematch="offer-rematch">Offer rematch · swap colors</button><p>Both players must agree. Board dimensions and clock settings stay the same.</p>';
   controls.querySelectorAll('[data-rematch]').forEach(b=>{b.disabled=online.busy||!online.connected;b.onclick=()=>sendOnline(b.dataset.rematch);});
 }
-function sizeBoard(){const c=dimensions(state),height=Math.max(c.ranks*32,Math.min(760,(window.visualViewport?.height||window.innerHeight)-220));document.documentElement.style.setProperty('--board-fit',`${Math.round(height*c.files/c.ranks+20)}px`);}
+function sizeBoard(){if($('game-view').hidden)return;const c=dimensions(state),top=document.querySelector('.board-wrap').getBoundingClientRect().top+window.scrollY,height=Math.max(c.ranks*32,Math.min(760,(window.visualViewport?.height||window.innerHeight)-top-50));document.documentElement.style.setProperty('--board-fit',`${Math.round(height*c.files/c.ranks+20)}px`);}
 window.addEventListener('resize',sizeBoard);window.visualViewport?.addEventListener('resize',sizeBoard);
 function render() {
   sizeBoard();
@@ -160,6 +160,7 @@ function render() {
   renderLayers();renderBoard();renderMatch();renderClocks();
   const restore=focusKind==='square'?document.querySelector(`[data-square="${focusedSquare}"]`):focusKind==='layer'?document.querySelector(`[data-layer="${focusValue}"]`):null;
   restore?.focus({preventScroll:true});
+  sizeBoard();window.requestAnimationFrame(sizeBoard);
   scheduleBot();
 }
 function selectSquare(i) {
@@ -359,7 +360,7 @@ async function boot(){
   setScreen('lobby');refreshLobby();
   if(!online.storageAvailable)lobbyMessage('Browser storage is unavailable. Keep this tab open so you can retain your seat.',true);
 }
-matchMedia('(min-width: 901px)').addEventListener('change',renderLayers);
+matchMedia('(min-width: 1101px)').addEventListener('change',renderLayers);
 $('lobby-setup').innerHTML=setupHTML();wireSetup();
 $('new-local-setup').onclick=()=>{try{const config=readSetup(),opponent=readOpponent();const begin=()=>{startLocal();cancelBot();bot=opponent;newGame(config);};if(localStorage.getItem(STORE))confirmAction('Replace the local game?','This starts a new on-device match with the selected opponent, board and clock.','Start game',begin);else begin();}catch(e){lobbyMessage(e.message,true);}};
 let themeId='forest';try{themeId=localStorage.getItem('cubehouse.theme')||'forest';}catch{}applyTheme(themeId);
